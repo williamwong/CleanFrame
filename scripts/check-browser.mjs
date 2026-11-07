@@ -9,10 +9,26 @@ const IDS = ['IkWsFHtOY9.Stremio', 'org.tizen.netflix-app', 'MCmYXNxgcu.DisneyPl
 const NAMES = ['Stremio', 'Netflix', 'Disney+', 'YouTube', 'Apple TV', 'Prime Video', 'ABC iview', 'SBS On Demand', 'Apple Music'];
 const EXTRA = 'AbCdEf1234.FamilyApp', SPOTIFY = 'rJeHak5zRg.Spotify';
 const UNSAFE_NAME = 'Family <img src=x onerror="window.__catalogXss=1"> & TV';
+const BRANDED = [
+  { id: '5b8c3eb16b.BeamCTVDev', name: 'Max', brand: 'hbomax' },
+  { id: 'LBUAQX1exg.Hulu', name: 'Hulu', brand: 'hulu' },
+  { id: 'gzcc4LRFBF.Peacock', name: 'Peacock TV', brand: 'peacock' },
+  { id: 'yu1NM3vHsU.DAZN', name: 'DAZN', brand: 'dazn' },
+  { id: 'PvWgqxV3Xa.YouTubeTV', name: 'YouTube TV', brand: 'youtubetv' },
+  { id: 'com.samsung.tv.cobalt-ytkids', name: 'YouTube Kids', brand: 'youtubekids' },
+  { id: 'w0wZu3xkQq.GeForceNOW', name: 'GeForce NOW', brand: 'geforcenow' },
+  { id: 'GHI3a0zMSx.XboxGamePass', name: 'Xbox', brand: 'xbox' },
+  { id: 'CmeyUlnhYY.LunaWebApp', name: 'Amazon Luna', brand: 'luna' },
+  { id: 'HEPsqFNie0.tvplusstandalone', name: 'Samsung TV Plus', brand: 'tvplus', hidden: true },
+  { id: 'jAfAs7yVDX.TheSix', name: 'Samsung GameBreaks', brand: 'gamebreaks', hidden: true },
+  { id: 'zigzSWa1hy.InstagramAirwave', name: 'Instagram', brand: 'instagram', hidden: true },
+  { id: 'org.tizen.browser', name: 'Internet', brand: 'internet', hidden: true },
+  { id: '25emanual1.emanual', name: 'User Guide', brand: 'userguide', hidden: true }
+];
 const CATALOG = IDS.map((id, i) => ({ id, name: NAMES[i], show: true, iconPath: '' })).concat([
   { id: EXTRA, name: UNSAFE_NAME, show: true, iconPath: '' },
   { id: SPOTIFY, name: 'Spotify', show: true, iconPath: '' },
-  { id: '5b8c3eb16b.BeamCTVDev', name: 'HBO Max', show: true, iconPath: '' },
+  ...BRANDED.map(a => ({ id: a.id, name: a.name, show: !a.hidden, iconPath: a.native ? '/home/assets/icons/hbomax.svg' : '' })),
   { id: 'nClrkHome1.FrameHome', name: 'CleanFrame', show: true },
   { id: 'AbCdEf1234.worker', name: 'Background worker', show: true },
   { id: 'com.samsung.tv.cobalt-yt', name: 'YouTube', show: true }
@@ -220,6 +236,14 @@ const wallpaperListGeometry = () => current.evaluate(() => {
 });
 async function editor() { await scene('settings'); await act('settings.editor'); await current.waitForFunction(() => document.querySelector('[data-action^="editor.move."]')); await current.waitForFunction(() => !ShoreQA.state().catalog.loading); }
 async function remove(id) { await act('editor.move.' + id); await nav('back', 'right', 'ok'); }
+const editorHomeGeometry = () => current.evaluate(() => {
+  const view = document.querySelector('.ed-home'), focus = view.querySelector('.er.is-active'), bounds = view.getBoundingClientRect(), row = focus && focus.getBoundingClientRect();
+  const shown = [...view.querySelectorAll('.er')].filter(e => getComputedStyle(e).visibility !== 'hidden').map(e => e.querySelector('.er-num').textContent);
+  return { shown, focused: focus && focus.querySelector('.er-num').textContent,
+    contained: !!row && row.top >= bounds.top - 1 && row.bottom <= bounds.bottom + 1,
+    before: getComputedStyle(document.querySelector('.home-before')).display !== 'none',
+    after: getComputedStyle(document.querySelector('.home-after')).display !== 'none' };
+});
 async function library() { await scene('home'); await act('util.apps'); await current.waitForFunction(() => !ShoreQA.state().catalog.loading); }
 async function noLiveFilters() {
   return current.evaluate(() => [...document.querySelectorAll('#stage, #stage *')].filter(e => e.getClientRects().length).map(e => {
@@ -250,7 +274,7 @@ try {
     await closePage();
     await page({ seed: { dock: [], wallpaper: 'missing', mode: 'constructor', theme: 'constructor' } });
     const s = await state();
-    check('Invalid values recover usable bounded Home', s.dock.length >= 1 && s.dock.length <= 9 && walls.some(w => w.id === s.wallpaper) && ['fixed', 'open', '5', '15', '60'].includes(s.mode), s);
+    check('Invalid values recover usable bounded Home', s.dock.length >= 1 && s.dock.length <= 15 && walls.some(w => w.id === s.wallpaper) && ['fixed', 'open', '5', '15', '60'].includes(s.mode), s);
     await closePage();
     await page({ seed: baseline({ dock: [EXTRA, 'netflix'], lastApp: EXTRA }), catalogFailure: true });
     await library();
@@ -456,7 +480,17 @@ try {
   await run('Real catalogue and native launch boundary', async () => {
     await page(); await library();
     const names = await current.locator('[data-action^="apps.open."] .label').allTextContents();
-    check('Consumer catalogue excludes services, self and duplicate YouTube', names.length === 12 && names.filter(n => n === 'YouTube').length === 1 && !names.includes('CleanFrame') && !names.includes('Background worker'), names);
+    check('Consumer catalogue excludes services, self and duplicate YouTube', names.length === 25 && names.filter(n => n === 'YouTube').length === 1 && !names.includes('CleanFrame') && !names.includes('Background worker'), names);
+    const marks = await current.evaluate(ids => Object.fromEntries(ids.map(({ id, brand }) => {
+      const mark = document.querySelector('[data-action="apps.open.' + id + '"] [data-mark]');
+      return [id, mark && mark.getAttribute('data-mark')];
+    })), BRANDED);
+    check('Installed branded apps use their matching bundled marks', BRANDED.filter(a => a.brand).every(a => marks[a.id] === a.brand), marks);
+    check('Max uses the upstream bundled MAX mark', await current.evaluate(() => {
+      const row = document.querySelector('[data-action="apps.open.5b8c3eb16b.BeamCTVDev"]'), img = row && row.querySelector('[data-native-icon]');
+      return !!row && !!row.querySelector('[data-mark="hbomax"]') && !img;
+    }));
+    await current.screenshot({ path: out + 'installed-app-icons.jpg', quality: 90 });
     check('Installed names stay text, including HTML punctuation', names.includes(UNSAFE_NAME) && !(await current.evaluate(() => window.__catalogXss)));
     check('Exploration fixtures do not appear', !names.includes('Plex') && !names.includes('Jellyfin'));
     await act('apps.open.' + SPOTIFY); await current.waitForFunction(() => __tv.calls.length > 0);
@@ -497,7 +531,7 @@ try {
     check('Catalogue failure leaves Home intact', same((await state()).dock, PRIMARY));
     await current.evaluate(() => { __tv.catalogFailure = false; }); await act('apps.retry');
     await current.waitForSelector('[data-action="apps.open.' + EXTRA + '"]');
-    check('Retry displays real installed names', (await current.locator('[data-action^="apps.open."]').count()) === 12);
+    check('Retry displays real installed names', (await current.locator('[data-action^="apps.open."]').count()) === 25);
   });
   await run('Native icon and failed-image fallback', async () => {
     await page({ catalog: CATALOG.map(a => a.id === EXTRA ? { ...a, iconPath: '/home/assets/icons/netflix.svg' } : a) });
@@ -537,9 +571,23 @@ try {
     await act('editor.move.netflix'); await nav('down', 'ok');
     const moved = start.slice(); [moved[1], moved[2]] = [moved[2], moved[1]];
     check('Placed move persists immediately', same((await stored()).dock, moved));
-    await act('editor.add.' + EXTRA); check('Nine-app cap prevents addition', (await state()).dock.length === 9 && !(await state()).dock.includes(EXTRA));
+    for (let i = 0; i < 6; i++) {
+      const addable = (await call('actions')).find(action => action.startsWith('editor.add.') && action !== 'editor.add.' + EXTRA);
+      check('Editor exposes another remotely reachable app before the cap', !!addable, { i, actions: await call('actions') });
+      await act(addable);
+    }
+    check('Fifteen apps remain remotely reachable in the editor', (await state()).dock.length === 15 && /15 of 15/.test(await current.locator('#stage').innerText()));
+    let homeView = await editorHomeGeometry();
+    check('Adding item fifteen scrolls its focused row fully into view', homeView.focused === '15' && homeView.contained && homeView.before && !homeView.after, homeView);
+    await nav('left'); await nav(...Array(14).fill('up')); await current.waitForTimeout(240); homeView = await editorHomeGeometry();
+    check('Remote Up scrolls back to the first Home row', homeView.focused === '1' && homeView.contained && !homeView.before && homeView.after, homeView);
+    await nav(...Array(14).fill('down')); await current.waitForTimeout(240); homeView = await editorHomeGeometry();
+    check('Remote Down scrolls through all fifteen Home rows', homeView.focused === '15' && homeView.contained && homeView.before && !homeView.after, homeView);
+    await current.screenshot({ path: out + 'editor-fifteen-apps.jpg', quality: 90 });
+    await act('editor.add.' + EXTRA); check('Fifteen-app cap prevents addition', (await state()).dock.length === 15 && !(await state()).dock.includes(EXTRA));
+    await nav('left'); await nav(...Array(14).fill('up'));
     await remove('stremio'); await act('editor.add.' + EXTRA);
-    check('Native app can be pinned with stable ID', (await stored()).dock.includes(EXTRA) && (await state()).dock.length === 9);
+    check('Native app can be pinned with stable ID', (await stored()).dock.includes(EXTRA) && (await state()).dock.length === 15);
     check('Native pin retains readable metadata for failed discovery', (await stored()).appRecords.some(a => a.id === EXTRA && a.name === UNSAFE_NAME));
     await current.reload(); await ready(); check('Native pin survives reload', (await state()).dock.includes(EXTRA));
     await editor(); const ids = (await state()).dock;
@@ -558,6 +606,25 @@ try {
     await current.evaluate(() => { window.__failWrites = true; }); await call('look', { bg: old.look.bg === 'light' ? 'dark' : 'light' });
     await current.waitForFunction(() => !ShoreQA.state().pending);
     check('Failed appearance write keeps display and preferences', (await state()).look.bg === old.look.bg && same(await stored(), oldStored));
+  });
+  await run('Clock, date and Dock labels', async () => {
+    await page({ seed: baseline({ dock: [SPOTIFY], lastApp: SPOTIFY, appRecords: [{ id: SPOTIFY, appId: SPOTIFY, name: 'Spotify', brand: 'spotify', icon: '' }] }) });
+    let clock = await current.locator('#caption').innerText();
+    check('New clock defaults add AM/PM and a full stacked date', /\b(?:AM|PM)\b/.test(clock) && /[A-Z][a-z]+ \d{1,2}, \d{4}/.test(clock) && await current.locator('#caption > .date').count() === 1, clock);
+    check('Ordinary Dock labels do not duplicate Spotify in the top-left caption', await current.locator('#caption .full-name').count() === 0 && await current.locator('.tile.is-focus .label').innerText() === 'Spotify');
+    await group('typography');
+    check('Typography links to nested clock and date settings', (await call('actions')).includes('typography.clock'));
+    await act('typography.clock');
+    const clockOptions = await radios();
+    check('Clock panel offers time, date and layout choices together', ['time', 'date', 'clock'].every(axis => clockOptions.some(row => row.action.startsWith('choice.' + axis + '.'))), clockOptions);
+    await act('choice.time.24'); await current.waitForFunction(() => ShoreQA.state().look.time === '24');
+    await act('choice.date.short'); await current.waitForFunction(() => ShoreQA.state().look.date === 'short');
+    await act('choice.clock.inline'); await current.waitForFunction(() => ShoreQA.state().look.clock === 'inline');
+    clock = await current.locator('#caption').innerText();
+    check('24-hour short date can render inline', !/\b(?:AM|PM)\b/.test(clock) && /\b(?:Sun|Mon|Tue|Wed|Thu|Fri|Sat),/.test(clock) && await current.locator('#caption .clock-row > .date').count() === 1, clock);
+    await current.screenshot({ path: out + 'clock-date-settings.jpg', quality: 90 });
+    await current.reload(); await ready();
+    check('Clock and date choices survive reload', (await state()).look.time === '24' && (await state()).look.date === 'short' && (await state()).look.clock === 'inline');
   });
   await run('Appearance axes, fonts, scaling and matching materials', async () => {
     await page();
@@ -1069,7 +1136,7 @@ try {
     const focus = (await state()).focusAction; await current.keyboard.press('ArrowDown');
     check('Warm return restores remote focus', (await state()).focusAction !== focus && (await call('where')).focusCount === 1);
     const clock = await current.locator('#caption .clock').textContent();
-    check('Live 12-hour clock has no AM/PM', /^\s*\d{1,2}:\d{2}\s*$/.test(clock), clock);
+    check('Live default clock includes AM/PM', /^\s*\d{1,2}:\d{2}\s*(?:AM|PM)\s*$/.test(clock), clock);
   });
   await run('Open rotation and browser fallback', async () => {
     await page({ seed: baseline({ mode: 'open' }) }); check('Open mode advances at cold start', (await state()).wallpaper === walls[1].id);

@@ -72,7 +72,7 @@ test('regional streaming apps stay distinct and system helpers stay hidden', () 
   ]);
   assert.equal(apps.length, 3);
   assert.equal(apps.find(a => a.name === 'YouTube').brand, 'youtube');
-  assert.equal(apps.find(a => a.name === 'YouTube TV').brand, '');
+  assert.equal(apps.find(a => a.name === 'YouTube TV').brand, 'youtubetv');
   assert.equal(apps.find(a => a.name === 'HBO Max').brand, 'hbomax');
 });
 

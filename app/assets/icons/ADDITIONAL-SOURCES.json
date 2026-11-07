@@ -1,20 +1,32 @@
 [
   {
     "icon": "spotify",
-    "source": "https://github.com/simple-icons/simple-icons/blob/develop/icons/spotify.svg",
+    "source": "https://github.com/simple-icons/simple-icons/blob/16.35.0/icons/spotify.svg",
     "licence": "CC0-1.0",
-    "note": "Shape unchanged; white fill for launcher."
+    "note": "White fill for the monochrome launcher renderer."
   },
   {
     "icon": "hbomax",
-    "source": "https://github.com/simple-icons/simple-icons/blob/develop/icons/hbomax.svg",
+    "source": "https://github.com/simple-icons/simple-icons/blob/16.35.0/icons/hbomax.svg",
     "licence": "CC0-1.0",
-    "note": "Shape unchanged; white fill for launcher."
+    "note": "White fill for the monochrome launcher renderer."
   },
   {
     "icon": "tubi",
-    "source": "https://github.com/simple-icons/simple-icons/blob/develop/icons/tubi.svg",
+    "source": "https://github.com/simple-icons/simple-icons/blob/16.35.0/icons/tubi.svg",
     "licence": "CC0-1.0",
-    "note": "Shape unchanged; white fill for launcher."
+    "note": "White fill for the monochrome launcher renderer."
+  },
+  {
+    "icons": ["hulu", "peacock", "dazn", "youtubetv", "youtubekids", "geforcenow", "xbox", "luna"],
+    "source": "https://github.com/elax46/custom-brand-icons/tree/a53cabf49bf439023a8f33585af30d783bffe51b/icon-svg",
+    "licence": "MIT",
+    "note": "Files hulu.svg, peacock.svg, dazn.svg, youtube-tv.svg, youtube-kids.svg, nvidia-geforce.svg, xbox.svg and luna.svg; renamed where needed and normalized to white fill for the monochrome launcher renderer."
+  },
+  {
+    "icon": "instagram",
+    "source": "https://github.com/simple-icons/simple-icons/blob/16.35.0/icons/instagram.svg",
+    "licence": "CC0-1.0",
+    "note": "White fill for the monochrome launcher renderer."
   }
 ]
