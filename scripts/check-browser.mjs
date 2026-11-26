@@ -385,7 +385,7 @@ try {
           });
         }, { layout, controls });
         check(layout + '/' + controls + ' uses spacing between visible children at ' + width,
-          spacing.length === 3 && spacing.every(s => s.children === (controls === 'both' ? 2 : 1) && Math.abs(s.extraWidth - s.gap) < .5), spacing);
+          spacing.length === 4 && spacing.every(s => s.children === (controls === 'both' ? 2 : 1) && Math.abs(s.extraWidth - s.gap) < .5), spacing);
         const focused = [];
         for (let i = 0; i < 3; i++) {
           if (i) await nav(layout === 'dock' ? 'right' : 'down');
@@ -476,6 +476,20 @@ try {
     await group('samsung'); await act('samsung.inputs');
     await current.waitForSelector('[data-action="inputs.retry"]');
     check('Empty inventory is truthful', (await current.locator('#stage').innerText()).includes('No HDMI inputs were reported'));
+  });
+  await run('PS5 Home control switches HDMI 4 directly', async () => {
+    await page();
+    await current.evaluate(() => { __tv.videoSources = { connected: [{ type: 'HDMI', number: 4 }], disconnected: [{ type: 'HDMI', number: 1 }] }; });
+    for (const layout of ['dock', 'list']) {
+      await look({ layout }); await scene('home');
+      check('Home shows PS5 beside Art Mode ' + layout, (await current.locator('#utils .u').evaluateAll(b => b.map(x => x.dataset.action))).join() === 'util.art,util.ps5,util.apps,util.settings');
+    }
+    await current.evaluate(() => { __tv.calls.length = 0; });
+    await act('util.ps5'); await current.waitForFunction(() => __tv.calls.some(c => c.id === 'org.tizen.tv-viewer'));
+    check('PS5 control selects HDMI 4 before viewer handoff', await current.evaluate(() => __tv.calls[0].method === 'setSource' && __tv.calls[0].number === 4 && __tv.calls[1].id === 'org.tizen.tv-viewer'));
+    await current.evaluate(() => { window.dispatchEvent(new Event('focus')); __tv.videoSources = { connected: [{ type: 'HDMI', number: 2 }], disconnected: [] }; });
+    await act('util.ps5'); await current.waitForFunction(() => ShoreQA.state().view === 'message');
+    check('PS5 control reports a missing HDMI 4 truthfully', (await current.locator('#stage').innerText()).includes('no longer available'));
   });
   await run('Real catalogue and native launch boundary', async () => {
     await page(); await library();
